@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  image-finder:
+    build: .
+    container_name: image-finder
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8001
+    volumes:
+      - ./processed_images:/app/processed_images
+      - ./cache.json:/app/cache.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
