@@ -195,8 +195,65 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
                 cached=False
             )
     
-    # If all processing attempts failed, use fallback
-    logger.warning("All image processing attempts failed, using fallback")
+    # If all processing attempts failed, try Perplexity as fallback
+    logger.warning("All image processing attempts failed, trying Perplexity fallback...")
+    
+    # Check if we already tried Perplexity
+    if not request.source_url and not request.images:
+        # Already using Perplexity, no more fallbacks
+        logger.warning("Perplexity already tried, using default fallback")
+        return _create_fallback_response()
+    
+    # Try Perplexity as last resort
+    try:
+        perplexity_images = await image_collector.search_perplexity(
+            query=f"{request.title} {request.research}"
+        )
+        
+        if perplexity_images:
+            logger.info(f"Perplexity fallback found {len(perplexity_images)} images")
+            
+            # Analyze Perplexity images
+            perplexity_evaluations = await vision_analyzer.analyze_images(
+                image_urls=perplexity_images,
+                title=request.title,
+                research=request.research
+            )
+            
+            # Try to process Perplexity images
+            for evaluation in perplexity_evaluations:
+                logger.info(f"Attempting Perplexity candidate: {evaluation.image_url[:50]}...")
+                processed = await image_processor.process_image_url(evaluation.image_url)
+                
+                if processed:
+                    tool_used = "perplexity"
+                    
+                    if processed.get('needs_processing', True):
+                        filename, file_path = image_storage.save_image(
+                            processed['image_data'],
+                            processed['format']
+                        )
+                        image_url = image_storage.get_image_url(filename)
+                    else:
+                        image_url = evaluation.image_url
+                    
+                    return ImageResponse(
+                        image_url=image_url,
+                        original_url=evaluation.image_url,
+                        tool_used=tool_used,
+                        image_description=evaluation.reasoning,
+                        format=processed.get('format', 'original'),
+                        dimensions=processed.get('dimensions', 'unknown'),
+                        quality_score=evaluation.relevance_score,
+                        temporal_relevance=evaluation.temporal_relevance,
+                        watermark_status=evaluation.watermark_severity,
+                        cached=False
+                    )
+    except Exception as e:
+        logger.error(f"Perplexity fallback failed: {e}")
+    
+    # Final fallback
+    logger.warning("All attempts failed including Perplexity, using default fallback")
     return _create_fallback_response()
 
 
