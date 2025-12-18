@@ -154,8 +154,9 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
     )
     
     if not evaluations:
-        logger.warning("No images passed evaluation, using fallback")
-        return _create_fallback_response()
+        logger.warning("No images passed evaluation, trying Perplexity fallback...")
+        # Jump to Perplexity fallback instead of returning default immediately
+        evaluations = []  # Empty list to skip the processing loop below
     
     # Step 3: Process the best image
     for evaluation in evaluations:
