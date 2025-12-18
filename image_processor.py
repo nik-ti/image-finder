@@ -93,6 +93,12 @@ class ImageProcessor:
             # Open image
             img = Image.open(io.BytesIO(image_data))
             
+            # Check minimum dimensions for Telegram posts
+            min_dimension = IMAGE_SETTINGS['min_image_size']
+            if img.width < min_dimension or img.height < min_dimension:
+                logger.warning(f"Image too small: {img.width}x{img.height} (min: {min_dimension}x{min_dimension})")
+                return None
+            
             # Convert to RGB if needed (for JPEG)
             original_mode = img.mode
             if img.mode in ('RGBA', 'LA', 'P'):
