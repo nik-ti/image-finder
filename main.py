@@ -70,7 +70,8 @@ async def health_check():
     return {"status": "healthy"}
 
 
-@app.post("/find_image", response_model=ImageResponse)
+@app.post("/", response_model=ImageResponse)
+@app.post("/find_image", response_model=ImageResponse)  # Keep old endpoint for compatibility
 async def find_image(request: ImageRequest):
     """
     Find the best image for a news article or tool.
@@ -163,25 +164,31 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
         processed = await image_processor.process_image_url(evaluation.image_url)
         
         if processed:
-            # Save to storage
-            filename, file_path = image_storage.save_image(
-                processed['image_data'],
-                processed['format']
-            )
-            
-            # Generate URL (use localhost for now, can be configured)
-            image_url = image_storage.get_image_url(filename)
-            
             # Determine tool used
             tool_used = _determine_tool_used(evaluation.image_url, request)
+            
+            # Check if image needs processing or can use original URL
+            if processed.get('needs_processing', True):
+                # Save to storage
+                filename, file_path = image_storage.save_image(
+                    processed['image_data'],
+                    processed['format']
+                )
+                
+                # Generate URL
+                image_url = image_storage.get_image_url(filename)
+            else:
+                # Use original URL - no processing needed
+                image_url = evaluation.image_url
+                logger.info(f"Using original URL without processing: {image_url[:50]}...")
             
             return ImageResponse(
                 image_url=image_url,
                 original_url=evaluation.image_url,
                 tool_used=tool_used,
                 image_description=evaluation.reasoning,
-                format=processed['format'],
-                dimensions=processed['dimensions'],
+                format=processed.get('format', 'original'),
+                dimensions=processed.get('dimensions', 'unknown'),
                 quality_score=evaluation.relevance_score,
                 temporal_relevance=evaluation.temporal_relevance,
                 watermark_status=evaluation.watermark_severity,

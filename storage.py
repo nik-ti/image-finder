@@ -57,12 +57,12 @@ class ImageStorage:
             base_url = PUBLIC_URL
         return f"{base_url}/images/{filename}"
     
-    def delete_old_images(self, days: int = 30):
+    def delete_old_images(self, days: int = 3):
         """
         Delete images older than specified days.
         
         Args:
-            days: Number of days to keep images
+            days: Number of days to keep images (default: 3)
         """
         import time
         current_time = time.time()

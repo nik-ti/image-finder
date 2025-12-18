@@ -118,18 +118,74 @@ class ImageProcessor:
             
         except Exception as e:
             logger.error(f"Error processing image: {e}")
-            raise
+            return None
     
-    async def process_image_url(self, url: str) -> Optional[Dict[str, Any]]:
+    async def validate_image_suitability(self, url: str) -> dict:
         """
-        Download and process an image from URL.
+        Check if an image meets Telegram requirements without downloading.
         
         Args:
             url: Image URL
         
         Returns:
-            Dict with processed image data or None if processing fails
+            Dict with 'suitable' bool and 'reason' string
         """
+        try:
+            async with httpx.AsyncClient() as client:
+                # HEAD request to get headers without downloading
+                response = await client.head(
+                    url,
+                    timeout=TIMEOUTS['image_download'],
+                    follow_redirects=True
+                )
+                
+                if response.status_code != 200:
+                    return {'suitable': False, 'reason': 'URL not accessible'}
+                
+                # Check content type
+                content_type = response.headers.get('content-type', '')
+                if not content_type.startswith('image/'):
+                    return {'suitable': False, 'reason': 'Not an image'}
+                
+                # Check file size if available
+                content_length = response.headers.get('content-length')
+                if content_length:
+                    size_mb = int(content_length) / (1024 * 1024)
+                    if size_mb > IMAGE_SETTINGS['max_size_mb']:
+                        return {'suitable': False, 'reason': f'Too large ({size_mb:.1f}MB)'}
+                
+                # If we can't determine size or dimensions from headers,
+                # we'll need to download to check - mark as needs_validation
+                return {'suitable': True, 'reason': 'Appears suitable', 'needs_validation': True}
+                
+        except Exception as e:
+            logger.debug(f"Validation failed for {url}: {e}")
+            return {'suitable': False, 'reason': str(e)}
+    
+    async def process_image_url(self, url: str, force_process: bool = False) -> Optional[Dict[str, Any]]:
+        """
+        Download and process an image from URL, or return original if suitable.
+        
+        Args:
+            url: Image URL
+            force_process: If True, always process the image
+        
+        Returns:
+            Dict with processed image data or original URL if suitable
+        """
+        # First, validate if processing is needed
+        if not force_process:
+            validation = await self.validate_image_suitability(url)
+            if validation['suitable'] and not validation.get('needs_validation'):
+                logger.info(f"Image suitable without processing: {url[:50]}...")
+                return {
+                    'original_url': url,
+                    'needs_processing': False,
+                    'format': 'original',
+                    'dimensions': 'unknown',
+                    'size_kb': 0
+                }
+        
         # Validate URL
         if not await self.validate_image_url(url):
             logger.warning(f"Invalid image URL: {url}")
@@ -148,7 +204,8 @@ class ImageProcessor:
                 'image_data': processed_bytes,
                 'format': format_used,
                 'dimensions': dimensions,
-                'size_kb': size_kb
+                'size_kb': size_kb,
+                'needs_processing': True
             }
         except Exception as e:
             logger.error(f"Failed to process image from {url}: {e}")
