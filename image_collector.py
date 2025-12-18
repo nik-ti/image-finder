@@ -142,13 +142,14 @@ class ImageCollector:
         
         return images
     
-    async def search_perplexity(self, title: str, research: str) -> List[str]:
+    async def search_perplexity(self, title: str, research: str, retry_attempt: int = 1) -> List[str]:
         """
         Search for images using Perplexity API.
         
         Args:
             title: Article title
             research: Research context
+            retry_attempt: Attempt number (1 or 2) to vary the query
         
         Returns:
             List of image URLs from Perplexity
@@ -156,13 +157,22 @@ class ImageCollector:
         images = []
         
         try:
-            # Build search query
-            query = (
-                f"Find recent relevant images for: {title}. "
-                f"Context: {research}. "
-                f"Focus on screenshots, charts, interface demos, or event photos. "
-                f"Avoid stock photos, logos, and heavily watermarked images."
-            )
+            # Build search query - vary based on retry attempt
+            if retry_attempt == 1:
+                query = (
+                    f"Find recent relevant images for: {title}. "
+                    f"Context: {research}. "
+                    f"Focus on screenshots, charts, interface demos, or event photos. "
+                    f"Avoid stock photos, logos, and heavily watermarked images."
+                )
+            else:
+                # Second attempt: broaden search with alternative phrasing
+                query = (
+                    f"Search for high-quality visual content related to: {title}. "
+                    f"Background: {research}. "
+                    f"Prioritize: infographics, data visualizations, product images, or news photos. "
+                    f"Exclude: generic stock images, company logos, low-resolution thumbnails."
+                )
             
             # Make API request
             headers = {
