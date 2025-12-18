@@ -1,6 +1,6 @@
 """Pydantic models for request/response validation."""
-from typing import Optional, List
-from pydantic import BaseModel, Field, HttpUrl
+from typing import Optional, List, Union
+from pydantic import BaseModel, Field, field_validator
 
 
 class ImageRequest(BaseModel):
@@ -8,7 +8,18 @@ class ImageRequest(BaseModel):
     title: str = Field(..., description="Title of the news article or tool")
     research: str = Field(..., description="Research context or description")
     source_url: Optional[str] = Field(None, description="Optional source URL to scrape images from")
-    images: Optional[List[str]] = Field(None, description="Optional array of candidate image URLs")
+    images: Optional[Union[List[str], str]] = Field(None, description="Optional array of candidate image URLs or comma-separated string")
+    
+    @field_validator('images', mode='before')
+    @classmethod
+    def normalize_images(cls, v):
+        """Normalize images to list format - accepts array or comma-separated string."""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            # Split by comma and strip whitespace
+            return [url.strip() for url in v.split(',') if url.strip()]
+        return v
 
 
 class ImageEvaluation(BaseModel):
