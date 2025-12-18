@@ -34,7 +34,18 @@ class ImageProcessor:
                 
                 if response.status_code == 200:
                     content_type = response.headers.get('content-type', '')
-                    return content_type.startswith('image/')
+                    
+                    # Check content-type first
+                    if content_type.startswith('image/'):
+                        return True
+                    
+                    # Fallback: check file extension for common image formats
+                    # (Some servers return application/octet-stream for images)
+                    image_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg')
+                    if any(url.lower().endswith(ext) for ext in image_extensions):
+                        return True
+                    
+                    return False
                 
                 return False
         except Exception as e:
