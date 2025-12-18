@@ -207,7 +207,8 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
     # Try Perplexity as last resort
     try:
         perplexity_images = await image_collector.search_perplexity(
-            query=f"{request.title} {request.research}"
+            title=request.title,
+            research=request.research
         )
         
         if perplexity_images:
