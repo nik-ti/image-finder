@@ -243,7 +243,19 @@ Return ONLY the JSON array, no other text."""
                     timeout=5.0,  # Short timeout for validation
                     follow_redirects=True
                 )
-                return response.status_code == 200
+                
+                if response.status_code != 200:
+                    return False
+                
+                # Check file size (limit to 10MB for OpenAI Vision API)
+                content_length = response.headers.get('content-length')
+                if content_length:
+                    size_mb = int(content_length) / (1024 * 1024)
+                    if size_mb > 10:
+                        logger.debug(f"Image too large for Vision API: {url[:50]}... ({size_mb:.1f}MB)")
+                        return False
+                
+                return True
         except Exception as e:
             logger.debug(f"Image accessibility check failed for {url}: {e}")
             return False
