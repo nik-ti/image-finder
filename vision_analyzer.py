@@ -50,6 +50,18 @@ class VisionAnalyzer:
         if not filtered_urls:
             logger.warning("No images with supported formats found")
             return []
+            
+        # Validate accessibility (filter out unreachable/slow images)
+        valid_urls = []
+        for url in filtered_urls:
+            if await self._validate_accessibility(url):
+                valid_urls.append(url)
+        
+        filtered_urls = valid_urls
+        
+        if not filtered_urls:
+            logger.warning("No accessible images found")
+            return []
         
         # Limit to first 10 images to avoid excessive API costs
         filtered_urls = filtered_urls[:10]
@@ -221,3 +233,17 @@ Return ONLY the JSON array, no other text."""
         )
         
         return filtered
+    
+    async def _validate_accessibility(self, url: str) -> bool:
+        """Check if image URL is accessible and responsive."""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.head(
+                    url, 
+                    timeout=5.0,  # Short timeout for validation
+                    follow_redirects=True
+                )
+                return response.status_code == 200
+        except Exception as e:
+            logger.debug(f"Image accessibility check failed for {url}: {e}")
+            return False
