@@ -39,10 +39,13 @@ class VisionAnalyzer:
         
         # Filter to only supported formats for Vision API
         supported_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.webp')
-        filtered_urls = [
-            url for url in image_urls 
-            if any(url.lower().endswith(ext) for ext in supported_extensions)
-        ]
+        filtered_urls = []
+        for url in image_urls:
+            # Extract path from URL (ignore query parameters)
+            from urllib.parse import urlparse
+            path = urlparse(url).path.lower()
+            if any(path.endswith(ext) for ext in supported_extensions):
+                filtered_urls.append(url)
         
         if not filtered_urls:
             logger.warning("No images with supported formats found")
