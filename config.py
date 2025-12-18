@@ -61,3 +61,6 @@ DEFAULT_FALLBACK_IMAGE = "https://via.placeholder.com/1280x720/1a1a1a/ffffff?tex
 # Server Settings
 SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
 SERVER_PORT = int(os.getenv("SERVER_PORT", "8001"))
+
+# Public URL for image links
+PUBLIC_URL = os.getenv("PUBLIC_URL", "https://find-image.simple-flow.co")

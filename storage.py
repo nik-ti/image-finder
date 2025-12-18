@@ -41,17 +41,20 @@ class ImageStorage:
             logger.error(f"Error saving image: {e}")
             raise
     
-    def get_image_url(self, filename: str, base_url: str = "http://localhost:8000") -> str:
+    def get_image_url(self, filename: str, base_url: str = None) -> str:
         """
         Get the URL for a stored image.
         
         Args:
             filename: Image filename
-            base_url: Base URL of the server
+            base_url: Base URL of the server (defaults to PUBLIC_URL from config)
         
         Returns:
             Full URL to access the image
         """
+        if base_url is None:
+            from config import PUBLIC_URL
+            base_url = PUBLIC_URL
         return f"{base_url}/images/{filename}"
     
     def delete_old_images(self, days: int = 30):
