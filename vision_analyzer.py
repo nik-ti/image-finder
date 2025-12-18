@@ -37,10 +37,21 @@ class VisionAnalyzer:
         if not image_urls:
             return []
         
-        # Limit to first 10 images to avoid excessive API costs
-        image_urls = image_urls[:10]
+        # Filter to only supported formats for Vision API
+        supported_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.webp')
+        filtered_urls = [
+            url for url in image_urls 
+            if any(url.lower().endswith(ext) for ext in supported_extensions)
+        ]
         
-        logger.info(f"Analyzing {len(image_urls)} images with Vision LLM")
+        if not filtered_urls:
+            logger.warning("No images with supported formats found")
+            return []
+        
+        # Limit to first 10 images to avoid excessive API costs
+        filtered_urls = filtered_urls[:10]
+        
+        logger.info(f"Analyzing {len(filtered_urls)} images with Vision LLM")
         
         # Build prompt
         current_date = datetime.now().strftime('%Y-%m-%d')
@@ -57,7 +68,7 @@ class VisionAnalyzer:
         ]
         
         # Add images to the message
-        for idx, url in enumerate(image_urls):
+        for idx, url in enumerate(filtered_urls):
             messages[0]["content"].append({
                 "type": "image_url",
                 "image_url": {"url": url}
@@ -77,7 +88,7 @@ class VisionAnalyzer:
             logger.debug(f"Vision LLM response: {response_text}")
             
             # Extract JSON from response
-            evaluations = self._parse_evaluations(response_text, image_urls)
+            evaluations = self._parse_evaluations(response_text, filtered_urls)
             
             # Filter and sort
             filtered = self._filter_evaluations(evaluations)
