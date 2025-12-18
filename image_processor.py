@@ -215,7 +215,12 @@ class ImageProcessor:
         
         # Process image
         try:
-            processed_bytes, format_used, dimensions, size_kb = self.process_image(image_data)
+            result = self.process_image(image_data)
+            if result is None:
+                logger.warning(f"Image processing returned None for {url[:50]}...")
+                return None
+            
+            processed_bytes, format_used, dimensions, size_kb = result
             
             return {
                 'image_data': processed_bytes,
