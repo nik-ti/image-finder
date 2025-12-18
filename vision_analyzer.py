@@ -121,14 +121,20 @@ class VisionAnalyzer:
 Context: {research}
 Current date: {current_date}
 
+STRICT RELEVANCE RULES:
+1. ENTITY MATCHING: If the news mentions specific companies (Google, OpenAI, Tesla), tokens (BTC, ETH, SOL), or products (Gemini, ChatGPT), the image MUST visibly feature those entities, their logos, or direct screenshots of the product.
+2. NO INTELLECTUAL LEAPS: Do NOT accept generic dashboards, generic office stock photos, or unrelated business analytics just because they represent "utility" or "growth". If it doesn't mention the subject, it is NOT relevant.
+3. VISUAL EVIDENCE: Only report what is actually VISIBLE. Do not hallucinate relevance based on context.
+4. BANNED PATTERNS: Reject generic marketing dashboards, generic "web analytics", random software windows, and generic stock photos of people in offices.
+
 For each image (in order), evaluate:
 1. TEMPORAL RELEVANCE: Does it show current/recent data? Check dates, timestamps, chart timeframes.
-   - For price/chart news: data must be from today or very recent
-   - For event news: must show the actual event, not old stock photos
-2. RELEVANCE: Directly related to the news? Score 1-10.
-3. WATERMARKS: none/minimal/heavy (reject if heavy)
-4. ADS: none/minimal/intrusive (reject if intrusive)
-5. QUALITY: high/medium/low
+   - For price/chart news: data must be from today or very recent.
+   - For event news: must show the actual event, not old stock photos.
+2. RELEVANCE: Score 1-10. 10=Exact match (logo/entity visible), 1=Irrelevant/Generic.
+3. WATERMARKS: none/minimal/heavy (reject if heavy).
+4. ADS: none/minimal/intrusive (reject if intrusive).
+5. QUALITY: high/medium/low.
 6. OUTDATED INFO: Does it contain old/irrelevant information?
 
 Return a JSON array with one evaluation per image, in the same order as provided.

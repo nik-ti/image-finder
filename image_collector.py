@@ -160,18 +160,18 @@ class ImageCollector:
             # Build search query - vary based on retry attempt
             if retry_attempt == 1:
                 query = (
-                    f"Find recent relevant images for: {title}. "
+                    f"Find official press photos, news coverage images, or high-quality screenshots for: {title}. "
                     f"Context: {research}. "
-                    f"Focus on screenshots, charts, interface demos, or event photos. "
-                    f"Avoid stock photos, logos, and heavily watermarked images."
+                    f"Focus on verified project logos, technical charts with clear labels, or relevant event photos. "
+                    f"Strictly avoid generic office stock photos and unrelated analytic dashboards."
                 )
             else:
                 # Second attempt: broaden search with alternative phrasing
                 query = (
-                    f"Search for high-quality visual content related to: {title}. "
+                    f"Search for verified visual content or news graphics related to: {title}. "
                     f"Background: {research}. "
-                    f"Prioritize: infographics, data visualizations, product images, or news photos. "
-                    f"Exclude: generic stock images, company logos, low-resolution thumbnails."
+                    f"Prioritize: infographics with specific entity names, data visualizations showing {title}, or official project assets. "
+                    f"Exclude: generic marketing dashboards, unrelated software UI, and stock images of people."
                 )
             
             # Make API request
