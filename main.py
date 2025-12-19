@@ -315,56 +315,99 @@ async def _try_generic_fallback(
             
             logger.info(f"Generic attempt {attempt} found {len(generic_images)} images")
             
-            # Analyze with Vision LLM using RELAXED filtering (min_relevance=6)
-            evaluations = await vision_analyzer.analyze_images(
-                image_urls=generic_images,
-                title=request.title,
-                research=request.research
-            )
-            
-            # Apply relaxed filtering
-            if evaluations:
-                # Manually filter with lower threshold
-                relaxed_evals = []
-                for eval in evaluations:
-                    if (eval.watermark_severity != "heavy" and 
-                        eval.ad_presence != "intrusive" and
-                        eval.relevance_score >= 6):  # Relaxed from 8 to 6
-                        relaxed_evals.append(eval)
+            # Try Vision LLM analysis with quota error handling
+            try:
+                evaluations = await vision_analyzer.analyze_images(
+                    image_urls=generic_images,
+                    title=request.title,
+                    research=request.research
+                )
                 
-                # Sort by score
-                relaxed_evals.sort(key=lambda x: x.relevance_score, reverse=True)
-                
-                logger.info(f"Generic fallback: {len(relaxed_evals)} images passed relaxed filtering")
-                
-                # Try to process the best candidates
-                for evaluation in relaxed_evals:
-                    logger.info(f"Attempting generic candidate: {evaluation.image_url[:50]}...")
-                    processed = await image_processor.process_image_url(evaluation.image_url)
+                # Apply relaxed filtering
+                if evaluations:
+                    # Manually filter with lower threshold
+                    relaxed_evals = []
+                    for eval in evaluations:
+                        if (eval.watermark_severity != "heavy" and 
+                            eval.ad_presence != "intrusive" and
+                            eval.relevance_score >= 6):  # Relaxed from 8 to 6
+                            relaxed_evals.append(eval)
                     
-                    if processed:
-                        if processed.get('needs_processing', True):
-                            filename, file_path = image_storage.save_image(
-                                processed['image_data'],
-                                processed['format']
-                            )
-                            image_url = image_storage.get_image_url(filename)
-                        else:
-                            image_url = evaluation.image_url
+                    # Sort by score
+                    relaxed_evals.sort(key=lambda x: x.relevance_score, reverse=True)
+                    
+                    logger.info(f"Generic fallback: {len(relaxed_evals)} images passed relaxed filtering")
+                    
+                    # Try to process the best candidates
+                    for evaluation in relaxed_evals:
+                        logger.info(f"Attempting generic candidate: {evaluation.image_url[:50]}...")
+                        processed = await image_processor.process_image_url(evaluation.image_url)
                         
-                        logger.info(f"✅ Generic fallback SUCCESS on attempt {attempt}")
-                        return ImageResponse(
-                            image_url=image_url,
-                            original_url=evaluation.image_url,
-                            tool_used="fallback (perplexity)",
-                            image_description=f"Generic {topic} image - {evaluation.reasoning}",
-                            format=processed.get('format', 'original'),
-                            dimensions=processed.get('dimensions', 'unknown'),
-                            quality_score=evaluation.relevance_score,
-                            temporal_relevance=evaluation.temporal_relevance,
-                            watermark_status=evaluation.watermark_severity,
-                            cached=False
-                        )
+                        if processed:
+                            if processed.get('needs_processing', True):
+                                filename, file_path = image_storage.save_image(
+                                    processed['image_data'],
+                                    processed['format']
+                                )
+                                image_url = image_storage.get_image_url(filename)
+                            else:
+                                image_url = evaluation.image_url
+                            
+                            logger.info(f"✅ Generic fallback SUCCESS on attempt {attempt}")
+                            return ImageResponse(
+                                image_url=image_url,
+                                original_url=evaluation.image_url,
+                                tool_used="fallback (perplexity)",
+                                image_description=f"Generic {topic} image - {evaluation.reasoning}",
+                                format=processed.get('format', 'original'),
+                                dimensions=processed.get('dimensions', 'unknown'),
+                                quality_score=evaluation.relevance_score,
+                                temporal_relevance=evaluation.temporal_relevance,
+                                watermark_status=evaluation.watermark_severity,
+                                cached=False
+                            )
+            
+            except Exception as vision_error:
+                # Check if it's an OpenAI quota error
+                error_str = str(vision_error)
+                if "429" in error_str or "quota" in error_str.lower() or "insufficient_quota" in error_str:
+                    logger.warning(f"⚠️ OpenAI quota exceeded, using BLIND fallback (no Vision analysis)")
+                    
+                    # Emergency: Just try to process the first accessible image
+                    for img_url in generic_images:
+                        try:
+                            logger.info(f"Blind fallback: Attempting {img_url[:50]}...")
+                            processed = await image_processor.process_image_url(img_url)
+                            
+                            if processed:
+                                if processed.get('needs_processing', True):
+                                    filename, file_path = image_storage.save_image(
+                                        processed['image_data'],
+                                        processed['format']
+                                    )
+                                    image_url = image_storage.get_image_url(filename)
+                                else:
+                                    image_url = img_url
+                                
+                                logger.info(f"✅ BLIND fallback SUCCESS (quota exceeded)")
+                                return ImageResponse(
+                                    image_url=image_url,
+                                    original_url=img_url,
+                                    tool_used="fallback (perplexity)",
+                                    image_description=f"Generic {topic} image (selected without AI analysis due to quota limits)",
+                                    format=processed.get('format', 'original'),
+                                    dimensions=processed.get('dimensions', 'unknown'),
+                                    quality_score=5,  # Unknown quality
+                                    temporal_relevance="not_applicable",
+                                    watermark_status="none",
+                                    cached=False
+                                )
+                        except Exception as process_error:
+                            logger.debug(f"Blind fallback image failed: {process_error}")
+                            continue
+                else:
+                    # Not a quota error, re-raise
+                    raise
         
         except Exception as e:
             logger.error(f"Generic fallback attempt {attempt} failed: {e}")
