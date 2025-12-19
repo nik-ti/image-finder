@@ -233,3 +233,90 @@ class ImageCollector:
             logger.error(f"Error calling Perplexity API: {e}")
         
         return images
+    
+    async def search_perplexity_generic(self, topic: str, attempt: int = 1) -> List[str]:
+        """
+        Search for generic topic-related images with very broad queries.
+        Used as final fallback when specific searches fail.
+        
+        Args:
+            topic: Broad topic/category (e.g., "cryptocurrency", "AI", "technology")
+            attempt: Attempt number (1 or 2) to vary the query
+        
+        Returns:
+            List of image URLs from Perplexity
+        """
+        images = []
+        
+        try:
+            # Build generic search query based on attempt
+            if attempt == 1:
+                query = (
+                    f"Find high-quality {topic} logo, symbol, or representative image. "
+                    f"Focus on official branding, recognizable icons, or professional graphics."
+                )
+            else:
+                # Second attempt: even broader
+                query = (
+                    f"Find generic {topic} themed image, icon, or visual representation. "
+                    f"Any professional-looking {topic} related graphic is acceptable."
+                )
+            
+            logger.info(f"Generic Perplexity search attempt {attempt}: {query[:80]}...")
+            
+            # Make API request (same as regular search_perplexity)
+            headers = {
+                "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": PERPLEXITY_CONFIG['model'],
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": query
+                    }
+                ],
+                "return_images": PERPLEXITY_CONFIG['return_images'],
+                "search_recency_filter": PERPLEXITY_CONFIG['recency'],
+                "max_tokens": PERPLEXITY_CONFIG['max_tokens']
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    PERPLEXITY_CONFIG['api_url'],
+                    json=payload,
+                    headers=headers,
+                    timeout=TIMEOUTS['per_source']
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Extract images from response
+                    raw_images = []
+                    if 'images' in data:
+                        raw_images = data['images']
+                    elif 'choices' in data and len(data['choices']) > 0:
+                        message = data['choices'][0].get('message', {})
+                        if 'images' in message:
+                            raw_images = message['images']
+                    
+                    # Extract URLs from images
+                    for img in raw_images:
+                        if isinstance(img, str):
+                            images.append(img)
+                        elif isinstance(img, dict):
+                            url = img.get('url') or img.get('src') or img.get('image_url')
+                            if url:
+                                images.append(url)
+                    
+                    logger.info(f"Generic Perplexity search returned {len(images)} images")
+                else:
+                    logger.warning(f"Generic Perplexity API error: {response.status_code}")
+        
+        except Exception as e:
+            logger.error(f"Error in generic Perplexity search: {e}")
+        
+        return images

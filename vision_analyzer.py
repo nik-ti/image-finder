@@ -194,14 +194,18 @@ Return ONLY the JSON array, no other text."""
         
         return evaluations
     
-    def _filter_evaluations(self, evaluations: List[ImageEvaluation]) -> List[ImageEvaluation]:
+    def _filter_evaluations(self, evaluations: List[ImageEvaluation], min_relevance: int = 8) -> List[ImageEvaluation]:
         """
         Filter evaluations based on quality criteria and sort by score.
+        
+        Args:
+            evaluations: List of image evaluations
+            min_relevance: Minimum relevance score (default 8, can be lowered for fallback)
         
         Filtering rules:
         1. Reject if watermark_severity == "heavy"
         2. Reject if ad_presence == "intrusive"
-        3. Reject if relevance_score < 8
+        3. Reject if relevance_score < min_relevance
         4. Reject if is_relevant_to_event == False
         5. Reject if contains_outdated_info == True
         """
@@ -217,8 +221,8 @@ Return ONLY the JSON array, no other text."""
                 logger.debug(f"Rejected {eval.image_url[:50]}... - intrusive ads")
                 continue
             
-            if eval.relevance_score < 8:
-                logger.debug(f"Rejected {eval.image_url[:50]}... - low relevance score: {eval.relevance_score}")
+            if eval.relevance_score < min_relevance:
+                logger.debug(f"Rejected {eval.image_url[:50]}... - low relevance score: {eval.relevance_score} (min: {min_relevance})")
                 continue
             
             if not eval.is_relevant_to_event:
