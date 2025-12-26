@@ -51,20 +51,30 @@ class VisionAnalyzer:
             logger.warning("No images with supported formats found")
             return []
             
-        # Validate accessibility (filter out unreachable/slow images)
-        valid_urls = []
-        for url in filtered_urls:
-            if await self._validate_accessibility(url):
-                valid_urls.append(url)
+        # Limit initial candidates to prevent excessive validation time
+        # We only need 10 valid ones eventually, so starting with 20-30 is enough
+        filtered_urls = filtered_urls[:20]
+            
+        # Validate accessibility in parallel
+        import asyncio
         
+        async def check_url(url):
+            if await self._validate_accessibility(url):
+                return url
+            return None
+            
+        tasks = [check_url(url) for url in filtered_urls]
+        results = await asyncio.gather(*tasks)
+        
+        valid_urls = [url for url in results if url is not None]
         filtered_urls = valid_urls
         
         if not filtered_urls:
             logger.warning("No accessible images found")
             return []
         
-        # Limit to first 10 images to avoid excessive API costs
-        filtered_urls = filtered_urls[:10]
+        # Limit to first 5 images to avoid excessive API costs and timeouts
+        filtered_urls = filtered_urls[:5]
         
         logger.info(f"Analyzing {len(filtered_urls)} images with Vision LLM")
         
