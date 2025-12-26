@@ -38,10 +38,10 @@ IMAGE_SETTINGS = {
 
 # Timeout Settings (in seconds)
 TIMEOUTS = {
-    "per_source": 30,
-    "total_request": 60,
-    "image_download": 10,
-    "playwright_page_load": 15,
+    "per_source": 60,
+    "total_request": 120,
+    "image_download": 15,
+    "playwright_page_load": 20,
 }
 
 # Filtering Keywords (for logo/icon detection)
