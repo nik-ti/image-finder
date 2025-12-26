@@ -275,10 +275,8 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
     
     # Only raise error if even generic fallback fails
     logger.error("❌ CRITICAL: Even generic fallback failed after all attempts")
-    raise HTTPException(
-        status_code=500,
-        detail="Unable to find any image after exhaustive search including generic fallback."
-    )
+    logger.info("Using default system fallback image")
+    return _create_fallback_response()
 
 
 async def _try_generic_fallback(
