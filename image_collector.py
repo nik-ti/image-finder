@@ -252,14 +252,16 @@ class ImageCollector:
             # Build generic search query based on attempt
             if attempt == 1:
                 query = (
-                    f"Find high-quality {topic} logo, symbol, or representative image. "
-                    f"Focus on official branding, recognizable icons, or professional graphics."
+                    f"Find high-resolution {topic} wallpaper, abstract background, or professional concept art. "
+                    f"Focus on modern, clean designs suitable for a news article header. "
+                    f"Must be HD or 4K. Avoid text and small icons."
                 )
             else:
                 # Second attempt: even broader
                 query = (
-                    f"Find generic {topic} themed image, icon, or visual representation. "
-                    f"Any professional-looking {topic} related graphic is acceptable."
+                    f"Find generic {topic} stock photo or professional background image. "
+                    f"Any high-quality, professional looking image representing {topic}. "
+                    f"Prioritize abstract technology backgrounds or modern business visuals."
                 )
             
             logger.info(f"Generic Perplexity search attempt {attempt}: {query[:80]}...")

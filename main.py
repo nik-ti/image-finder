@@ -185,6 +185,7 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
                 logger.info(f"Using original URL without processing: {image_url[:50]}...")
             
             return ImageResponse(
+                image_found=True,
                 image_url=image_url,
                 original_url=evaluation.image_url,
                 tool_used=tool_used,
@@ -244,6 +245,7 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
                         
                         logger.info(f"✅ Successfully found image via Perplexity attempt {perplexity_attempt}")
                         return ImageResponse(
+                            image_found=True,
                             image_url=image_url,
                             original_url=evaluation.image_url,
                             tool_used=tool_used,
@@ -353,6 +355,7 @@ async def _try_generic_fallback(
                             
                             logger.info(f"✅ Generic fallback SUCCESS on attempt {attempt}")
                             return ImageResponse(
+                                image_found=True,
                                 image_url=image_url,
                                 original_url=evaluation.image_url,
                                 tool_used="fallback (perplexity)",
@@ -389,6 +392,7 @@ async def _try_generic_fallback(
                                 
                                 logger.info(f"✅ BLIND fallback SUCCESS (quota exceeded)")
                                 return ImageResponse(
+                                    image_found=True,
                                     image_url=image_url,
                                     original_url=img_url,
                                     tool_used="fallback (perplexity)",
@@ -457,15 +461,8 @@ def _determine_tool_used(image_url: str, request: ImageRequest) -> str:
 def _create_fallback_response() -> ImageResponse:
     """Create a fallback response when no suitable image is found."""
     return ImageResponse(
-        image_url=DEFAULT_FALLBACK_IMAGE,
-        original_url=DEFAULT_FALLBACK_IMAGE,
-        tool_used="default",
-        image_description="Default fallback image - no suitable image found",
-        format="png",
-        dimensions="1280x720",
-        quality_score=1,
-        temporal_relevance="not_applicable",
-        watermark_status="none",
+        image_found=False,
+        tool_used="none",
         cached=False
     )
 

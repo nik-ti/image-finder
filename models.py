@@ -37,13 +37,14 @@ class ImageEvaluation(BaseModel):
 
 class ImageResponse(BaseModel):
     """Response model for found images."""
-    image_url: str = Field(..., description="Processed and validated image URL")
-    original_url: str = Field(..., description="Source image URL before processing")
-    tool_used: str = Field(..., description="Source of the image: candidate / site / perplexity / default")
-    image_description: str = Field(..., description="Short description of the image")
-    format: str = Field(..., description="Image format: jpeg / png")
-    dimensions: str = Field(..., description="Image dimensions (e.g., 1280x720)")
-    quality_score: int = Field(..., ge=1, le=10, description="Quality score from vision analysis")
-    temporal_relevance: str = Field(..., description="Temporal relevance assessment")
-    watermark_status: str = Field(..., description="Watermark status: none / minimal / heavy")
+    image_found: bool = Field(..., description="Whether a suitable image was found")
+    image_url: Optional[str] = Field(None, description="Processed and validated image URL")
+    original_url: Optional[str] = Field(None, description="Source image URL before processing")
+    tool_used: Optional[str] = Field(None, description="Source of the image: candidate / site / perplexity / default")
+    image_description: Optional[str] = Field(None, description="Short description of the image")
+    format: Optional[str] = Field(None, description="Image format: jpeg / png")
+    dimensions: Optional[str] = Field(None, description="Image dimensions (e.g., 1280x720)")
+    quality_score: Optional[int] = Field(None, ge=1, le=10, description="Quality score from vision analysis")
+    temporal_relevance: Optional[str] = Field(None, description="Temporal relevance assessment")
+    watermark_status: Optional[str] = Field(None, description="Watermark status: none / minimal / heavy")
     cached: bool = Field(False, description="Whether result was retrieved from cache")
