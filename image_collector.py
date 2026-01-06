@@ -142,14 +142,15 @@ class ImageCollector:
         
         return images
     
-    async def search_perplexity(self, title: str, research: str, retry_attempt: int = 1) -> List[str]:
+    async def search_perplexity(self, title: str, research: str, retry_attempt: int = 1, recency: Optional[str] = "day") -> List[str]:
         """
         Search for images using Perplexity API.
         
         Args:
             title: Article title
             research: Research context
-            retry_attempt: Attempt number (1 or 2) to vary the query
+            retry_attempt: Attempt number (1 or 2)
+            recency: Recency filter ("day", "month", "year", or None)
         
         Returns:
             List of image URLs from Perplexity
@@ -159,6 +160,7 @@ class ImageCollector:
         try:
             # Build search query - vary based on retry attempt
             if retry_attempt == 1:
+                # Attempt 1: Specific/Strict
                 query = (
                     f"Find official press photos, news coverage images, or high-quality screenshots for: {title}. "
                     f"Context: {research}. "
@@ -166,12 +168,12 @@ class ImageCollector:
                     f"Strictly avoid generic office stock photos and unrelated analytic dashboards."
                 )
             else:
-                # Second attempt: broaden search with alternative phrasing
+                # Attempt 2: Broader/Flexible (Event Summary)
                 query = (
-                    f"Search for verified visual content or news graphics related to: {title}. "
-                    f"Background: {research}. "
-                    f"Prioritize: infographics with specific entity names, data visualizations showing {title}, or official project assets. "
-                    f"Exclude: generic marketing dashboards, unrelated software UI, and stock images of people."
+                    f"Find visual content summarizing the event or topic: {title}. "
+                    f"Context: {research}. "
+                    f"Look for broader news imagery, representative graphics, or relevant social media visuals. "
+                    f"Allow for slightly more generic but still relevant representations of the topic."
                 )
             
             # Make API request
@@ -189,9 +191,13 @@ class ImageCollector:
                     }
                 ],
                 "return_images": PERPLEXITY_CONFIG['return_images'],
-                "search_recency_filter": PERPLEXITY_CONFIG['recency'],
+                # "search_recency_filter": recency, # managed conditionally below
                 "max_tokens": PERPLEXITY_CONFIG['max_tokens']
             }
+            
+            # Add recency only if specified
+            if recency:
+                payload["search_recency_filter"] = recency
             
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -281,7 +287,8 @@ class ImageCollector:
                     }
                 ],
                 "return_images": PERPLEXITY_CONFIG['return_images'],
-                "search_recency_filter": PERPLEXITY_CONFIG['recency'],
+                "return_images": PERPLEXITY_CONFIG['return_images'],
+                # No recency filter for generic/abstract concepts
                 "max_tokens": PERPLEXITY_CONFIG['max_tokens']
             }
             

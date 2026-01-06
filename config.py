@@ -33,7 +33,8 @@ IMAGE_SETTINGS = {
     "max_dimension": 1280,  # Telegram recommended max
     "max_size_mb": 10,  # Telegram limit
     "jpeg_quality": 90,
-    "min_image_size": 1000,  # Minimum width/height for scraped images
+    "min_image_size": 1000,  # Minimum width/height for scraper images
+    "min_logo_size": 200,    # Minimum width/height for logo fallback
 }
 
 # Timeout Settings (in seconds)
@@ -46,6 +47,7 @@ TIMEOUTS = {
 
 # Filtering Keywords (for logo/icon detection)
 EXCLUDE_KEYWORDS = ["logo", "icon", "favicon", "avatar", "badge", "button"]
+LOGO_KEYWORDS = ["logo", "brand", "icon", "vector", "symbol", "identity"]
 
 # Storage Settings
 BASE_DIR = Path(__file__).parent

@@ -10,6 +10,29 @@ The Image Finder service intelligently selects images by:
 3. **Processing** only when needed (hybrid approach to minimize resource usage)
 4. **Optimizing** for Telegram's requirements (max 1280px, max 10MB)
 
+## 🔍 Search Logic & Fallback Strategy
+
+The service employs a smart 3-tier fallback system to identify the best possible image, relaxing constraints only when necessary:
+
+### Tier 1: Strict News Search
+- **Goal**: Find high-resolution, recent news visuals.
+- **Process**:
+    1.  **Attempt 1**: Specific query ("Official press photos", "Charts") | Strict filters (>1000px).
+    2.  **Attempt 2**: Flexible query ("Visual event summary") | Strict filters.
+- **Recency**: Last 24 hours.
+
+### Tier 2: Low-Res Logo Fallback
+- **Trigger**: If Tier 1 fails to find any images.
+- **Goal**: Find official company branding/logos.
+- **Process**: Search for official vector/brand identities.
+- **Filters**: Relaxed Size (>200px) | Recency: Anytime.
+
+### Tier 3: Generic Concept Fallback
+- **Trigger**: If Tier 2 fails.
+- **Goal**: Find high-quality abstract wallpapers relevant to the topic.
+- **Process**: Search for abstract backgrounds (e.g., "AI Technology Background").
+- **Filters**: High-Res (>1000px) | Relaxed Relevance | Recency: Anytime.
+
 ## 🏗️ Architecture
 
 ```

@@ -21,7 +21,10 @@ class VisionAnalyzer:
         self,
         image_urls: List[str],
         title: str,
-        research: str
+        research: str,
+        min_relevance_score: int = 8,
+        min_resolution_px: int = 1000,
+        fallback_mode: bool = False
     ) -> List[ImageEvaluation]:
         """
         Analyze multiple images and return evaluations.
@@ -80,7 +83,7 @@ class VisionAnalyzer:
         
         # Build prompt
         current_date = datetime.now().strftime('%Y-%m-%d')
-        prompt = self._build_analysis_prompt(title, research, current_date)
+        prompt = self._build_analysis_prompt(title, research, current_date, min_resolution_px, fallback_mode)
         
         # Build messages with images
         messages = [
@@ -125,31 +128,36 @@ class VisionAnalyzer:
             logger.error(f"Error analyzing images with Vision LLM: {e}")
             return []
     
-    def _build_analysis_prompt(self, title: str, research: str, current_date: str) -> str:
+    def _build_analysis_prompt(self, title: str, research: str, current_date: str, min_resolution_px: int, fallback_mode: bool) -> str:
         """Build the analysis prompt for Vision LLM."""
+        
+        # Adjust prompt based on fallback mode
+        resolution_instruction = f"The image MUST be high-resolution (approx >{min_resolution_px}px). REJECT small thumbnails."
+        if min_resolution_px < 500:
+            resolution_instruction = "Image size is flexible, but clear vectors or logos are preferred over blurry thumbnails."
+            
+        relevance_instruction = "10=Exact match (official/news). 1=Irrelevant."
+        if fallback_mode:
+            relevance_instruction = "Score LENIENTLY. 10=Good concept/Logo. 6=Acceptable Generic/Abstract. 1=Total Junk."
+
         return f"""Analyze these images for news article: "{title}"
 Context: {research}
 Current date: {current_date}
 
-STRICT RELEVANCE AND QUALITY RULES:
-1. ENTITY MATCHING: If the news mentions specific companies (Google, OpenAI, Tesla), tokens (BTC, ETH, SOL), or products (Gemini, ChatGPT), the image MUST visibly feature those entities, their logos, or direct screenshots of the product.
-2. HIGH RESOLUTION: The image MUST be high-resolution, clear, and look professional. REJECT any image that looks small, pixelated, or low-quality. Favicons, small icons, and thumbnails are FORBIDDEN.
-3. NO INTELLECTUAL LEAPS: Do NOT accept generic dashboards, generic office stock photos, or unrelated business analytics just because they represent "utility" or "growth". If it doesn't mention the subject, it is NOT relevant.
-4. VISUAL EVIDENCE: Only report what is actually VISIBLE. Do not hallucinate relevance based on context.
-5. BANNED PATTERNS: Reject generic marketing dashboards, generic "web analytics", random software windows, and generic stock photos of people in offices.
+STRICT VALIDATION RULES:
+1. RESOLUTION: {resolution_instruction}
+2. RELEVANCE: If specific entities are mentioned, look for them. IF FALLBACK/LOGO SEARCH: Accept official logos or abstract representations if they look professional.
+3. QUALITY: Reject pixelated/blurry images.
+4. BANNED: No random stock photos of "people shaking hands" or "smiling office workers".
 
 For each image (in order), evaluate:
-1. TEMPORAL RELEVANCE: Does it show current/recent data? Check dates, timestamps, chart timeframes.
-   - For price/chart news: data must be from today or very recent.
-   - For event news: must show the actual event, not old stock photos.
-2. RELEVANCE & QUALITY: Score 1-10. 
-   - 10=Exact match (logo/entity visible) AND high resolution.
-   - 1=Irrelevant OR low resolution OR thumbnail-sized.
-   - REJECT images that are small or cropped poorly.
-3. WATERMARKS: none/minimal/heavy (reject if heavy).
-4. ADS: none/minimal/intrusive (reject if intrusive).
+1. TEMPORAL RELEVANCE: Check dates if visible. (Ignore for logos/abstract).
+2. RELEVANCE SCORE 1-10: {relevance_instruction}
+   - REJECT if score < 4.
+3. WATERMARKS: none/minimal/heavy.
+4. ADS: none/minimal/intrusive.
 5. QUALITY: high/medium/low.
-6. OUTDATED INFO: Does it contain old/irrelevant information?
+6. OUTDATED: true/false.
 
 Return a JSON array with one evaluation per image, in the same order as provided.
 Each evaluation should have this structure:
@@ -165,7 +173,7 @@ Each evaluation should have this structure:
   "reasoning": "brief explanation"
 }}
 
-Return ONLY the JSON array, no other text."""
+Return ONLY the JSON array."""
     
     def _parse_evaluations(self, response_text: str, image_urls: List[str]) -> List[ImageEvaluation]:
         """Parse Vision LLM response into ImageEvaluation objects."""

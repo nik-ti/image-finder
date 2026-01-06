@@ -12,7 +12,7 @@ from vision_analyzer import VisionAnalyzer
 from image_processor import ImageProcessor
 from storage import ImageStorage
 from cache_manager import CacheManager
-from config import PROCESSED_IMAGES_DIR, DEFAULT_FALLBACK_IMAGE, TIMEOUTS
+from config import PROCESSED_IMAGES_DIR, DEFAULT_FALLBACK_IMAGE, TIMEOUTS, IMAGE_SETTINGS
 from utils import logger
 
 
@@ -265,6 +265,53 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
                 
         except Exception as e:
             logger.error(f"Perplexity attempt {perplexity_attempt} failed: {e}")
+    
+    # Tier 2: Logo Fallback (Relaxed constraints)
+    logger.info("⚠️ Entering Logo fallback mode (Tier 2)...")
+    try:
+        logo_images = await image_collector.search_logos(request.title, request.research)
+        
+        if logo_images:
+            # Analyze with relaxed constraints for logos
+            logo_evaluations = await vision_analyzer.analyze_images(
+                image_urls=logo_images,
+                title=request.title,
+                research=request.research,
+                min_relevance_score=6,      # Relaxed score
+                min_resolution_px=IMAGE_SETTINGS['min_logo_size'],  # 200px
+                fallback_mode=True          # Lenient scoring prompt
+            )
+            
+            for evaluation in logo_evaluations:
+                logger.info(f"Attempting logo candidate: {evaluation.image_url[:50]}...")
+                processed = await image_processor.process_image_url(evaluation.image_url)
+                
+                if processed:
+                    if processed.get('needs_processing', True):
+                        filename, file_path = image_storage.save_image(
+                            processed['image_data'],
+                            processed['format']
+                        )
+                        image_url = image_storage.get_image_url(filename)
+                    else:
+                        image_url = evaluation.image_url
+                        
+                    logger.info("✅ Successfully found logo image")
+                    return ImageResponse(
+                        image_found=True,
+                        image_url=image_url,
+                        original_url=evaluation.image_url,
+                        tool_used="fallback (logo)",
+                        image_description=f"Official Logo/Brand Identity - {evaluation.reasoning}",
+                        format=processed.get('format', 'original'),
+                        dimensions=processed.get('dimensions', 'unknown'),
+                        quality_score=evaluation.relevance_score,
+                        temporal_relevance="not_applicable",
+                        watermark_status="none",
+                        cached=False
+                    )
+    except Exception as e:
+        logger.error(f"Logo fallback failed: {e}")
     
     # Generic fallback: Try Perplexity with very broad topic-based queries
     logger.warning("⚠️ Entering generic fallback mode...")
