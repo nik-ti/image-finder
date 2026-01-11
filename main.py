@@ -163,6 +163,18 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
     for evaluation in evaluations:
         logger.info(f"Attempting to process top candidate: {evaluation.image_url[:50]}...")
         
+        # STRICT VERIFICATION STEP
+        # Ensure image doesn't contain conflicting logos/text
+        is_verified = await vision_analyzer.verify_image_content(
+            evaluation.image_url,
+            request.title,
+            request.research
+        )
+        
+        if not is_verified:
+            logger.warning(f"⚠️ Candidate rejected by strict verification: {evaluation.image_url[:50]}...")
+            continue
+            
         processed = await image_processor.process_image_url(evaluation.image_url)
         
         if processed:
@@ -229,6 +241,18 @@ async def _find_image_internal(request: ImageRequest) -> ImageResponse:
                 # Try to process Perplexity images
                 for evaluation in perplexity_evaluations:
                     logger.info(f"Attempting Perplexity candidate: {evaluation.image_url[:50]}...")
+                    
+                    # STRICT VERIFICATION STEP
+                    is_verified = await vision_analyzer.verify_image_content(
+                        evaluation.image_url,
+                        request.title,
+                        request.research
+                    )
+                    
+                    if not is_verified:
+                        logger.warning(f"⚠️ Perplexity candidate rejected by verification: {evaluation.image_url[:50]}...")
+                        continue
+
                     processed = await image_processor.process_image_url(evaluation.image_url)
                     
                     if processed:

@@ -288,6 +288,79 @@ Return ONLY the JSON array."""
                         return False
                 
                 return True
-        except Exception as e:
             logger.debug(f"Image accessibility check failed for {url}: {e}")
             return False
+
+    async def verify_image_content(self, image_url: str, title: str, research: str) -> bool:
+        """
+        Secondary STRICT verification pass for a selected candidate.
+        checks for conflicting entities or incorrect text.
+        
+        Returns:
+            True if image passes verification, False if rejected.
+        """
+        try:
+            prompt = f"""STRICT VERIFICATION TASK
+For the news topic: "{title}"
+Context: {research}
+
+Analyze this image and list ALL visible text and logos.
+
+VERIFICATION QUESTIONS:
+1. CONFLICTING ENTITIES: Does the image show a logo or brand that is UNRELATED or CONFLICTING with the topic? 
+   - Example: Post is about "OpenAI", image has big "NVIDIA" logo -> CONFLICT.
+   - Example: Post is about "Google", image has "Microsoft" logo -> CONFLICT.
+2. TEXT MISMATCH: Does the visible text contradict the topic?
+   - Example: Topic is "Gemini 1.5", text says "GPT-4" -> CONFLICT.
+3. WRONG VIBE: Is it a generic "Stock Photo" that just has the right keywords but wrong meaning?
+
+DECISION:
+- Return 'PASS' if the image is accurate and safe to use.
+- Return 'FAIL' if there is a clear conflict or halluncination.
+
+Return JSON:
+{{
+  "decision": "PASS" or "FAIL",
+  "reason": "explanation of what text/logo caused failure"
+}}"""
+        
+            messages = [
+                {
+                    "role": "user", 
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": image_url}}
+                    ]
+                }
+            ]
+            
+            response = await self.client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=messages,
+                max_tokens=300,
+                temperature=0.0
+            )
+            
+            content = response.choices[0].message.content
+            # Cleanup markdown
+            if content.startswith('```'):
+                lines = content.split('\n')
+                content = '\n'.join(lines[1:-1])
+                
+            data = json.loads(content)
+            decision = data.get('decision', 'FAIL').upper()
+            reason = data.get('reason', 'Unknown')
+            
+            if decision == 'PASS':
+                logger.info(f"✅ Image passed strict verification: {reason}")
+                return True
+            else:
+                logger.warning(f"❌ Image FAILED strict verification: {reason}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Verification Check Error: {e}")
+            # If check fails, we default to Allowing it (fail open) to avoid over-blocking 
+            # unless it's a critical safety feature, but here we want Quality.
+            # Actually, let's fail open to prevent crashes, but log it.
+            return True
