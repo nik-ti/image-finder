@@ -259,6 +259,28 @@ Images are filtered based on:
    - Accept "medium" quality
    - Reject "low" quality
 
+## 🤖 AI Logic & Cost Analysis
+
+The system uses a multi-step AI pipeline to ensure image quality. Below is the breakdown of API calls per request:
+
+### Standard Flow (Success on Tier 1)
+1.  **Search**: 1 Perplexity Call (News Search).
+2.  **Analysis**: 1 OpenAI Vision Call (Batched analysis of top 5 images).
+3.  **Verification**: 1 OpenAI Vision Call (Strict check on winner).
+*   **Total**: ~3 LLM Calls.
+
+### Worst Case (Fallback to Tier 3)
+If Tier 1 and Tier 2 fail:
+1.  **Tier 1**: 2 Perplexity Calls (Retry) + 2 Vision Calls.
+2.  **Tier 2**: 1 Perplexity Call (Logo) + 1 Vision Call.
+3.  **Tier 3**: 2 Perplexity Calls (Generic) + 2 Vision Calls.
+*   **Total**: ~10-12 LLM Calls (Rare).
+
+### Why this structure?
+- **Batch Analysis**: We analyze 5 images in a single GPT-4o-mini call to save costs.
+- **Fail-Fast Verification**: We only verify the *winning* candidate.
+- **Blind Fallback**: If OpenAI imposes rate limits (429), we switch to "Blind Mode" (0 Vision calls) to ensure the service never crashes.
+
 ## 📊 Performance
 
 - **Average Response Time**: 5-15 seconds
