@@ -41,6 +41,9 @@ RUN playwright install chromium
 # Copy application code
 COPY . .
 
+# Ensure cache.json is deleted from image so it can be mounted as a file
+RUN rm -rf /app/cache.json
+
 # Create directories for storage
 RUN mkdir -p processed_images
 

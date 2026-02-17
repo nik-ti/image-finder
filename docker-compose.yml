@@ -14,7 +14,7 @@ services:
       - SERVER_PORT=8001
     volumes:
       - ./processed_images:/app/processed_images
-      - ./cache.json:/app/cache.json
+      - ./cache_db.json:/app/cache.json
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8001/health"]
       interval: 30s

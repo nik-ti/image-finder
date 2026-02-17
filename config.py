@@ -40,7 +40,7 @@ IMAGE_SETTINGS = {
 # Timeout Settings (in seconds)
 TIMEOUTS = {
     "per_source": 60,
-    "total_request": 120,
+    "total_request": 300,
     "image_download": 15,
     "playwright_page_load": 20,
 }

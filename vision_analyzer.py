@@ -288,6 +288,7 @@ Return ONLY the JSON array."""
                         return False
                 
                 return True
+        except Exception as e:
             logger.debug(f"Image accessibility check failed for {url}: {e}")
             return False
 

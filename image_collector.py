@@ -239,7 +239,71 @@ class ImageCollector:
             logger.error(f"Error calling Perplexity API: {e}")
         
         return images
-    
+    async def search_logos(self, title: str, research: str) -> List[str]:
+        """
+        Search for official logos or brand assets using Perplexity.
+        Targeted specifically for the Logo Fallback (Tier 2).
+        """
+        images = []
+        try:
+            logger.info(f"Searching for logos for: {title}")
+            query = (
+                f"Find the official logo, icon, or brand identity for: {title}. "
+                f"Context: {research}. "
+                f"Return valid image URLs for the official logo (PNG/SVG preferred) or app icon. "
+                f"Avoid generic images, look for specific brand assets."
+            )
+            
+            # Reuse Perplexity configuration
+            headers = {
+                "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": PERPLEXITY_CONFIG['model'],
+                "messages": [{"role": "user", "content": query}],
+                "return_images": True,
+                "max_tokens": PERPLEXITY_CONFIG['max_tokens']
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    PERPLEXITY_CONFIG['api_url'],
+                    json=payload,
+                    headers=headers,
+                    timeout=TIMEOUTS['per_source']
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Extract images logic (reused from search_perplexity)
+                    raw_images = []
+                    if 'images' in data:
+                        raw_images = data['images']
+                    elif 'choices' in data:
+                        message = data['choices'][0].get('message', {})
+                        if 'images' in message:
+                            raw_images = message['images']
+                    
+                    for img in raw_images:
+                        if isinstance(img, str):
+                            images.append(img)
+                        elif isinstance(img, dict):
+                            url = img.get('url') or img.get('src') or img.get('image_url')
+                            if url:
+                                images.append(url)
+                                
+                    logger.info(f"Logo search returned {len(images)} images")
+                else:
+                    logger.warning(f"Logo search error: {response.status_code}")
+                    
+        except Exception as e:
+            logger.error(f"Error in logo search: {e}")
+            
+        return images
+
     async def search_perplexity_generic(self, topic: str, attempt: int = 1) -> List[str]:
         """
         Search for generic topic-related images with very broad queries.
